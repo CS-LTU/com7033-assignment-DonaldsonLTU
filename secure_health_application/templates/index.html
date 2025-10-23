@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,5 +8,23 @@
 <body>
     <h1>✅ Flask is working perfectly!</h1>
     <p>Welcome to the Secure Health Application homepage.</p>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Health Application</title>
+
+    <!-- I'm linking my CSS stylesheet from the static folder to give the page a nice design -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- I'm creating a simple container to hold my welcome message -->
+    <div class="container">
+        <h1>✅ Flask is working perfectly!</h1>
+        <p>Welcome to the Secure Health Application homepage.</p>
+    </div>
 </body>
 </html>

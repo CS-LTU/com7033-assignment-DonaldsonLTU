@@ -1,0 +1,22 @@
+/* I'm giving the page a clean, centred layout */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    text-align: center;
+    padding: 50px;
+}
+
+/* I'm styling the success message box */
+.container {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    display: inline-block;
+}
+
+/* I'm making the green tick and heading stand out */
+h1 {
+    color: #009879;
+}
