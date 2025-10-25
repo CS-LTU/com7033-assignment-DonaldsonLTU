@@ -1,0 +1,9 @@
+<!-- I'm creating the dashboard page that only logged-in users can see -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard · Secure Health Application{% endblock %}
+
+{% block content %}
+  <h1>Dashboard</h1>
+  <p>Hi {{ user }}, you’re authenticated. 🎉</p>
+{% endblock %}

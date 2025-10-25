@@ -20,3 +20,9 @@ body {
 h1 {
     color: #009879;
 }
+/* I'm styling one-time feedback messages for clarity */
+.flashes { list-style: none; padding: 0; margin: 1rem auto; max-width: 640px; }
+.flashes li { padding: .75rem 1rem; border-radius: 6px; margin-bottom: .5rem; }
+.flashes li.success { background: #e7f7ee; border: 1px solid #bfe7cf; }
+.flashes li.error   { background: #fdecea; border: 1px solid #f5c2c0; }
+.flashes li.warning { background: #fff7e6; border: 1px solid #ffe0a3; }

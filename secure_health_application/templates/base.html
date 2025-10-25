@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Secure Health Application{% endblock %}</title>
+
+  <!-- I'm linking my global stylesheet so every page gets the same look -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- I'm showing one-time feedback messages (success/error) to the user -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+      {% for category, message in messages %}
+        <li class="{{ category }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<!-- I'm updating my navigation bar to change links based on login status -->
+<a href="{{ url_for('home') }}">Home</a>
+{% if session.get('user') %}
+  <a href="{{ url_for('dashboard') }}">Dashboard</a>
+  <a href="{{ url_for('logout') }}">Logout</a>
+{% else %}
+  <a href="{{ url_for('login') }}">Login</a>
+{% endif %}
+
+  <!-- I'm creating a slot where each page will inject its unique content -->
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
