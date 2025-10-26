@@ -1,9 +1,26 @@
 {% extends "base.html" %}
-
 {% block title %}Login · Secure Health Application{% endblock %}
 
 {% block content %}
-  <!-- I'm keeping this super simple for now; we'll wire real auth later -->
+  <!-- I'm keeping this simple for now; later I'd add stronger auth + HTTPS-only cookies in prod -->
   <h1>Login</h1>
-  <p>This is a placeholder login page so my navbar link works.</p>
+
+  <!-- I'm inserting CSRF and any hidden fields from Flask-WTF -->
+  <form action="{{ url_for('login') }}" method="post">
+    {{ form.hidden_tag() }}
+
+    <label for="username">Username</label>
+    {{ form.username(id="username") }}
+    {% for err in form.username.errors %}
+      <div class="error">{{ err }}</div>
+    {% endfor %}
+
+    <label for="password">Password</label>
+    {{ form.password(id="password") }}
+    {% for err in form.password.errors %}
+      <div class="error">{{ err }}</div>
+    {% endfor %}
+
+    {{ form.submit() }}
+  </form>
 {% endblock %}
