@@ -125,6 +125,31 @@ USERS = {
     "student": generate_password_hash("password123")
 }
 
+# I'm connecting both my local SQLite database (for users)
+# and a MongoDB database (for patient stroke records)
+
+from flask_sqlalchemy import SQLAlchemy
+from pymongo import MongoClient
+
+# I'm setting up SQLite for user authentication
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# I'm initialising SQLAlchemy
+db = SQLAlchemy(app)
+
+# I'm defining a simple User model for authentication data
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+
+# I'm connecting to my local MongoDB (patient records)
+# Later, this will hold all stroke dataset records securely
+mongo_client = MongoClient("mongodb://localhost:27017/")
+mongo_db = mongo_client["secure_health_db"]
+patients_collection = mongo_db["patients"]
+
 # --- Tiny in-memory rate-limit for /login (I'm throttling repeated failures) ---
 FAIL_WINDOW = 60          # seconds I'm looking back
 FAIL_LIMIT = 5            # I'm allowing 5 failed attempts per window
