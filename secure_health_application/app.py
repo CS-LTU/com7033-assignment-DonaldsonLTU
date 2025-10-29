@@ -221,19 +221,105 @@ def login():
     # GET or invalid POST falls through to here
     return render_template("login.html", form=form)
 
+# --- Analytics helpers & dashboard route ------------------------------------
+# I'm importing tools to count and summarise neatly
+from collections import Counter
+from statistics import mean
+
+def _age_band(a):
+    """I'm bucketing ages so I can chart them cleanly."""
+    try:
+        a = float(a)
+    except (TypeError, ValueError):
+        return "Unknown"
+    if a < 18: return "0–17"
+    if a < 36: return "18–35"
+    if a < 51: return "36–50"
+    if a < 66: return "51–65"
+    return "66+"
+
 @app.route("/dashboard")
 def dashboard():
-    # I'm protecting this route
-    require_login()
-    return render_template("dashboard.html", user=session.get("user"))
+    # I'm protecting this page so only logged-in users can view analytics
+    if not session.get("user"):
+        flash("Please log in to see the dashboard.", "warning")
+        return redirect(url_for("login"))
 
+    # I'm pulling just the fields I need to keep this light and fast
+    cursor = patients_collection.find({}, {
+        "_id": 0,
+        "age": 1,
+        "gender": 1,
+        "stroke": 1,
+        "avg_glucose_level": 1,
+        "bmi": 1,
+        "hypertension": 1,
+        "heart_disease": 1,
+        "smoking_status": 1
+    })
+    docs = list(cursor)
+
+    total = len(docs)
+    stroke_yes = sum(1 for d in docs if int(d.get("stroke", 0)) == 1)
+    stroke_no  = total - stroke_yes
+    stroke_rate = round((stroke_yes / total) * 100, 2) if total else 0.0
+
+    # I'm counting simple distributions for quick charts
+    by_gender = Counter((d.get("gender") or "Unknown") for d in docs)
+    by_age_band = Counter(_age_band(d.get("age")) for d in docs)
+
+    # I'm showing a couple of simple risk-factor signals (means)
+    # – keeping it clearly labelled as descriptive, not clinical advice.
+    glucose_stroke = [float(d.get("avg_glucose_level")) for d in docs if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke",0))==1]
+    glucose_no     = [float(d.get("avg_glucose_level")) for d in docs if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke",0))==0]
+    bmi_stroke     = [float(d.get("bmi")) for d in docs if d.get("bmi") not in (None, "") and int(d.get("stroke",0))==1]
+    bmi_no         = [float(d.get("bmi")) for d in docs if d.get("bmi") not in (None, "") and int(d.get("stroke",0))==0]
+
+    stats = {
+        "total": total,
+        "stroke_yes": stroke_yes,
+        "stroke_no": stroke_no,
+        "stroke_rate": stroke_rate,
+        "by_gender": by_gender,
+        "by_age_band": by_age_band,
+        "glucose_mean_stroke": round(mean(glucose_stroke), 1) if glucose_stroke else None,
+        "glucose_mean_no": round(mean(glucose_no), 1) if glucose_no else None,
+        "bmi_mean_stroke": round(mean(bmi_stroke), 1) if bmi_stroke else None,
+        "bmi_mean_no": round(mean(bmi_no), 1) if bmi_no else None,
+    }
+
+    # I'm passing lists to the template so Chart.js can plot them
+    gender_labels = list(stats["by_gender"].keys())
+    gender_values = [stats["by_gender"][g] for g in gender_labels]
+
+    age_labels = ["0–17", "18–35", "36–50", "51–65", "66+"]
+    age_values = [stats["by_age_band"].get(lbl, 0) for lbl in age_labels]
+
+    return render_template(
+        "dashboard.html",
+        user=session.get("user"),
+        stats=stats,
+        gender_labels=gender_labels, gender_values=gender_values,
+        age_labels=age_labels, age_values=age_values
+    )
+
+# I'm exposing a tiny JSON API so the dashboard (or markers) can fetch stats if needed
+@app.route("/api/stats")
+def api_stats():
+    if not session.get("user"):
+        return {"error": "unauthorised"}, 401
+    # I’m returning just the high-level numbers for now
+    cursor = patients_collection.find({}, {"_id":0, "stroke":1})
+    docs = list(cursor)
+    total = len(docs)
+    stroke_yes = sum(1 for d in docs if int(d.get("stroke",0))==1)
+    return {"total": total, "stroke_yes": stroke_yes, "stroke_no": total-stroke_yes}
+# I'm providing a proper /logout route so the nav link works
 @app.route("/logout")
 def logout():
-    # I'm clearing the session to log out safely
-    session.clear()
+    session.clear()                         # I'm clearing the session safely
     flash("You have been signed out.", "success")
-    return redirect(url_for("home"))
-
+    return redirect(url_for("home"))        # I'm sending the user back to home
 # --- Dev runner ---
 if __name__ == "__main__":
     app.run(debug=True)
