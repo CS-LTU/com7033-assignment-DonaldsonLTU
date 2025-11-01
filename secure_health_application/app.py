@@ -175,7 +175,13 @@ def add_security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # I'm allowing only same-origin resources + my own inline styles (kept minimal).
-    resp.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'"
+    resp.headers["Content-Security-Policy"] = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "connect-src 'self'"
+)
     return resp
 
 # --- Helpers ---
@@ -192,7 +198,6 @@ def home():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     form = LoginForm()
-
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
 
     # I'm blocking if this IP has too many recent failures
@@ -204,21 +209,30 @@ def login():
         username = form.username.data
         password = form.password.data
 
-        # I'm looking up the user and verifying the hash
-        stored_hash = USERS.get(username)
-        if stored_hash and check_password_hash(stored_hash, password):
+        # I'm checking first in the SQLite database
+        u = User.query.filter_by(username=username).first()
+        if u and check_password_hash(u.password_hash, password):
             session.clear()
-            session.permanent = True      # uses my 30-min lifetime above
+            session.permanent = True
             session["user"] = username
             flash("You are now signed in.", "success")
             return redirect(url_for("dashboard"))
 
-        # I'm logging the failed attempt and telling the user (without leaking detail)
+        # If not found in DB, fall back to fake USERS dictionary
+        stored_hash = USERS.get(username)
+        if stored_hash and check_password_hash(stored_hash, password):
+            session.clear()
+            session.permanent = True
+            session["user"] = username
+            flash("You are now signed in.", "success")
+            return redirect(url_for("dashboard"))
+
+        # If both fail, log and show error
         note_failure(client_ip)
         flash("Invalid username or password.", "error")
         return render_template("login.html", form=form), 401
 
-    # GET or invalid POST falls through to here
+    # Default case for GET or invalid POST
     return render_template("login.html", form=form)
 
 # --- Analytics helpers & dashboard route ------------------------------------
@@ -295,12 +309,26 @@ def dashboard():
     age_labels = ["0–17", "18–35", "36–50", "51–65", "66+"]
     age_values = [stats["by_age_band"].get(lbl, 0) for lbl in age_labels]
 
+    # I'm fetching all patients from MongoDB for admin/student users
+    page = int(request.args.get("page", 1))  # I'm getting current page number
+    per_page = 50  # I'm showing 50 records per page
+
+    # I'm sorting for consistency and skipping based on pagination
+    patients_cursor = patients_collection.find({}, {"_id": 0}).skip((page - 1) * per_page).limit(per_page)
+    patients = list(patients_cursor)
+    total_patients = patients_collection.count_documents({})
+
+    # I'm calculating total pages
+    total_pages = (total_patients + per_page - 1) // per_page
+
+    # I'm sending all data to dashboard.html
     return render_template(
         "dashboard.html",
         user=session.get("user"),
         stats=stats,
         gender_labels=gender_labels, gender_values=gender_values,
-        age_labels=age_labels, age_values=age_values
+        age_labels=age_labels, age_values=age_values,
+        patients=patients, page=page, total_pages=total_pages
     )
 
 # I'm exposing a tiny JSON API so the dashboard (or markers) can fetch stats if needed

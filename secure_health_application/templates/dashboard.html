@@ -22,7 +22,7 @@
   </div>
 
   <!-- I'm loading Chart.js from a CDN to draw simple, clear charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ <script src="{{ url_for('static', filename='chart.js') }}"></script>
 
   <!-- I'm plotting stroke vs non-stroke as a doughnut for quick proportion reading -->
   <div class="container" style="max-width:900px;">
@@ -74,4 +74,37 @@
       options: { scales: { y: { beginAtZero: true } } }
     });
   </script>
+  <hr>
+
+<h2>Patient Dataset (first 50 records)</h2>
+<!-- I'm showing the first 50 patient records in a simple table -->
+<table border="1" cellspacing="0" cellpadding="5">
+  <thead>
+    <tr>
+      {% for col in patients[0].keys() %}
+        <th>{{ col }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in patients %}
+      <tr>
+        {% for value in row.values() %}
+          <td>{{ value }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- I'm adding simple data page links below the table(this part is an ai assisted code) -->
+<div style="margin-top:15px;">
+  {% if page > 1 %}
+    <a href="?page={{ page - 1 }}">Previous</a>
+  {% endif %}
+  <span> Page {{ page }} of {{ total_pages }} </span>
+  {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}">Next</a>
+  {% endif %}
+</div>
 {% endblock %}

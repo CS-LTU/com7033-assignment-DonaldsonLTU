@@ -29,3 +29,7 @@ h1 {
 
 /* I'm making WTForms error messages noticeable but unobtrusive (an ai assisted code) */
 .error { color: #b00020; margin-top: 4px; font-size: 0.9rem; }
+/* I'm giving my chart canvases a height so they display */
+.container canvas {
+    height: 260px;
+}
