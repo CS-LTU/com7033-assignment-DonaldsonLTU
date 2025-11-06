@@ -10,23 +10,85 @@
 </head>
 <body>
   <!-- I'm showing one-time feedback messages (success/error) to the user -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <ul class="flashes">
-      {% for category, message in messages %}
-        <li class="{{ category }}">{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-<!-- I'm updating my navigation bar to change links based on login status -->
-<a href="{{ url_for('home') }}">Home</a>
-{% if session.get('user') %}
-  <a href="{{ url_for('dashboard') }}">Dashboard</a>
-  <a href="{{ url_for('logout') }}">Logout</a>
-{% else %}
-  <a href="{{ url_for('login') }}">Login</a>
-{% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <!-- I'm replacing the simple links with a flexible nav bar including admin/patient settings -->
+  <nav style="display:flex; justify-content:space-between; align-items:center; gap:12px; background:#f0f0f0; padding:10px 20px;">
+    <div>
+      <a href="{{ url_for('home') }}">Home</a>
+      {% if session.get('user') %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      {% endif %}
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px;">
+      {% if session.get('user') == 'admin' %}
+        <!-- I'm showing a tiny admin-only Settings menu -->
+        <div style="position:relative;">
+          <button id="settingsBtn" aria-haspopup="true" aria-expanded="false">⚙ Settings</button>
+          <div id="settingsMenu" style="display:none; position:absolute; right:0; top:120%; background:#fff; border:1px solid #ccc; padding:8px; min-width:180px; z-index:10;">
+            <a href="{{ url_for('admin_settings') }}">Admin panel</a><br>
+            <a href="{{ url_for('insert_record') }}">Insert new record</a><br>
+            <a href="{{ url_for('edit_record') }}">Edit a record</a><br>
+            <a href="{{ url_for('delete_record') }}">Delete a record</a><br>
+            <a href="{{ url_for('change_password') }}">Change password</a>
+          </div>
+        </div>
+        <script>
+          // I'm toggling the tiny dropdown without any library (admin)
+          document.addEventListener('click', function (e) {
+            const btn = document.getElementById('settingsBtn');
+            const menu = document.getElementById('settingsMenu');
+            if (!btn || !menu) return;
+            if (btn.contains(e.target)) {
+              const open = menu.style.display === 'block';
+              menu.style.display = open ? 'none' : 'block';
+            } else if (!menu.contains(e.target)) {
+              menu.style.display = 'none';
+            }
+          });
+        </script>
+      {% endif %}
+
+      {% if session.get('user') and session.get('user').startswith('patient-') %}
+        <!-- I'm showing a tiny patient-only Settings with just Change Password -->
+        <div style="position:relative;">
+          <button id="pSettingsBtn" aria-haspopup="true" aria-expanded="false">⚙ Settings</button>
+          <div id="pSettingsMenu" style="display:none; position:absolute; right:0; top:120%; background:#fff; border:1px solid #ccc; padding:8px; min-width:180px; z-index:10;">
+            <a href="{{ url_for('change_password') }}">Change password</a>
+          </div>
+        </div>
+        <script>
+          // I'm toggling the patient dropdown
+          document.addEventListener('click', function (e) {
+            const btn = document.getElementById('pSettingsBtn');
+            const menu = document.getElementById('pSettingsMenu');
+            if (!btn || !menu) return;
+            if (btn.contains(e.target)) {
+              const open = menu.style.display === 'block';
+              menu.style.display = open ? 'none' : 'block';
+            } else if (!menu.contains(e.target)) {
+              menu.style.display = 'none';
+            }
+          });
+        </script>
+      {% endif %}
+
+      {% if session.get('user') %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+      {% endif %}
+    </div>
+  </nav>
 
   <!-- I'm creating a slot where each page will inject its unique content -->
   <div class="container">

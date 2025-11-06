@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}My Health Record · Secure Health{% endblock %}
+
+{% block content %}
+  <!-- I'm showing only THIS patient's record; no charts/tables -->
+  <h1>Your Record</h1>
+  <p style="color:#666">This page shows just your own details.</p>
+
+  <table border="1" cellspacing="0" cellpadding="6" style="max-width:900px;">
+    <tbody>
+      {% for k, v in patient.items() %}
+        <tr>
+          <th style="text-align:left">{{ k }}</th>
+          <td>{{ v }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr>
+  <!-- I'm exposing a simple support number as requested -->
+  <div style="margin-top:10px;">
+    <strong>Contact Medical Support:</strong>
+    <span>{{ support_number }}</span>
+  </div>
+
+  <!-- tiny nudge -->
+  <p style="margin-top:8px; color:#888; font-size:0.9em;">
+    If anything looks wrong, please speak to support before making changes.
+  </p>
+{% endblock %}

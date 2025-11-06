@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Insert Patient{% endblock %}
+{% block content %}
+<h1>Insert new patient</h1>
+<p><!-- I'm collecting the full patient row to insert into MongoDB --></p>
+<form method="post">
+  {{ form.csrf_token }}
+  {{ form.id.label }} {{ form.id(size=10) }}<br>
+  {{ form.gender.label }} {{ form.gender(size=12) }}<br>
+  {{ form.age.label }} {{ form.age(size=6) }}<br>
+  {{ form.hypertension.label }} {{ form.hypertension(size=4) }}<br>
+  {{ form.heart_disease.label }} {{ form.heart_disease(size=4) }}<br>
+  {{ form.ever_married.label }} {{ form.ever_married(size=12) }}<br>
+  {{ form.work_type.label }} {{ form.work_type(size=18) }}<br>
+  {{ form.residence_type.label }} {{ form.residence_type(size=12) }}<br>
+  {{ form.avg_glucose_level.label }} {{ form.avg_glucose_level(size=8) }}<br>
+  {{ form.bmi.label }} {{ form.bmi(size=8) }}<br>
+  {{ form.smoking_status.label }} {{ form.smoking_status(size=18) }}<br>
+  {{ form.stroke.label }} {{ form.stroke(size=4) }}<br><br>
+  {{ form.submit() }}
+</form>
+{% endblock %}

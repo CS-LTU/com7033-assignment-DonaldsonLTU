@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Edit Patient{% endblock %}
+{% block content %}
+<h1>Edit a patient</h1>
+
+<!-- Step 1: I'm looking up a record by ID -->
+<form method="post" style="margin-bottom:1rem;">
+  {{ lookup.csrf_token }}
+  {{ lookup.id.label }} {{ lookup.id(size=10) }}
+  {{ lookup.submit(value="Find") }}
+</form>
+
+{% if found %}
+  <!-- Step 2: I'm showing the edit form pre-filled -->
+  <form method="post">
+    {{ form.csrf_token }}
+    {{ form.id.label }} {{ form.id(readonly=True) }}<br>
+    {{ form.gender.label }} {{ form.gender(size=12) }}<br>
+    {{ form.age.label }} {{ form.age(size=6) }}<br>
+    {{ form.hypertension.label }} {{ form.hypertension(size=4) }}<br>
+    {{ form.heart_disease.label }} {{ form.heart_disease(size=4) }}<br>
+    {{ form.ever_married.label }} {{ form.ever_married(size=12) }}<br>
+    {{ form.work_type.label }} {{ form.work_type(size=18) }}<br>
+    {{ form.residence_type.label }} {{ form.residence_type(size=12) }}<br>
+    {{ form.avg_glucose_level.label }} {{ form.avg_glucose_level(size=8) }}<br>
+    {{ form.bmi.label }} {{ form.bmi(size=8) }}<br>
+    {{ form.smoking_status.label }} {{ form.smoking_status(size=18) }}<br>
+    {{ form.stroke.label }} {{ form.stroke(size=4) }}<br><br>
+    {{ form.submit(value="Save") }}
+  </form>
+{% endif %}
+{% endblock %}

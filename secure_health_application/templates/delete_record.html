@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Delete Patient{% endblock %}
+{% block content %}
+<h1>Delete a patient by ID</h1>
+<p><!-- I'm asking only the ID; the record will be removed if it exists --></p>
+<form method="post">
+  {{ form.csrf_token }}
+  {{ form.id.label }} {{ form.id(size=10) }}
+  {{ form.submit() }}
+</form>
+{% endblock %}

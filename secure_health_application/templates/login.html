@@ -11,6 +11,8 @@
 
     <label for="username">Username</label>
     {{ form.username(id="username") }}
+    <!-- I'm adding a helper line to guide users on valid username characters -->
+    <small>Only letters, numbers, underscore, and hyphen.</small>
     {% for err in form.username.errors %}
       <div class="error">{{ err }}</div>
     {% endfor %}

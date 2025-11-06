@@ -76,8 +76,25 @@
   </script>
   <hr>
 
+<!-- I'm adding a tiny search bar that submits back to /dashboard (GET) -->
+<form method="get" action="{{ url_for('dashboard') }}" style="max-width:900px;margin:20px auto;text-align:left;">
+  <input type="text" name="q" placeholder="Search gender, smoking status, or numbers (age, bmi, glucose)…"
+         value="{{ q or '' }}" style="width:70%;padding:8px;">
+  <input type="hidden" name="page" value="1">
+  <button type="submit">Search</button>
+  {% if q %}
+    <a href="{{ url_for('dashboard') }}" style="margin-left:10px;">Clear</a>
+  {% endif %}
+</form>
+
 <h2>Patient Dataset (first 50 records)</h2>
-<!-- I'm showing the first 50 patient records in a simple table -->
+
+<!-- ✅ FIX: if no search results, show message instead of Jinja error -->
+{% if patients|length == 0 %}
+  <p style="color:red; text-align:center;">No results found.</p>
+{% else %}
+
+<!-- (an ai assisted code) I'm showing the first 50 patient records in a simple table -->
 <table border="1" cellspacing="0" cellpadding="5">
   <thead>
     <tr>
@@ -96,15 +113,17 @@
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
 
 <!-- I'm adding simple data page links below the table(this part is an ai assisted code) -->
-<div style="margin-top:15px;">
+<!-- I'm adding simple page navigation below the table -->
+<div style="max-width:900px;margin:15px auto;text-align:center;">
   {% if page > 1 %}
-    <a href="?page={{ page - 1 }}">Previous</a>
+    <a href="{{ url_for('dashboard', page=page-1, q=q) }}">« Prev</a>
   {% endif %}
-  <span> Page {{ page }} of {{ total_pages }} </span>
+  <span style="margin:0 10px;">Page {{ page }} of {{ total_pages }}</span>
   {% if page < total_pages %}
-    <a href="?page={{ page + 1 }}">Next</a>
+    <a href="{{ url_for('dashboard', page=page+1, q=q) }}">Next »</a>
   {% endif %}
 </div>
 {% endblock %}

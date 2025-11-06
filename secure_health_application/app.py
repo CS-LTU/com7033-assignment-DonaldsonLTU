@@ -93,123 +93,150 @@
 # building the Flask app with CSRF protection, session hardening,
 # basic auth flow, security headers, and a tiny rate-limit for login.
 
+
+# I'm building the main Flask app for the Secure Health Application.
+# This file handles login, analytics dashboard, admin features, and database setup.
+
+# --- Imports (I'm pulling in everything I need up front) ---
 from datetime import timedelta, datetime
-from collections import defaultdict, deque
+from collections import defaultdict, deque, Counter
+from statistics import mean
+from functools import wraps
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from werkzeug.security import check_password_hash, generate_password_hash
 
-# CSRF
+# I'm importing CSRF protection to secure forms from cross-site attacks.
 from flask_wtf import CSRFProtect
 
-# My WTForms login form
+# I'm importing my login form from forms.py.
 from forms import LoginForm
 
+# --- App setup (I'm creating my Flask app) ---
 app = Flask(__name__)
 
 # --- Core security config (I'm keeping secrets out of code in real life) ---
-app.config["SECRET_KEY"] = "change-me-in-real-project"  # I'm using this for sessions + CSRF
-app.config["WTF_CSRF_ENABLED"] = True
+# I'm setting a secret key so Flask can encrypt sessions and CSRF tokens.
+app.config["SECRET_KEY"] = "change-me-in-real-project"
+app.config["WTF_CSRF_ENABLED"] = True  # I'm enabling CSRF protection.
 
-# Session hardening (I'm making cookies stricter)
-app.config["SESSION_COOKIE_SECURE"] = False  # set True when using HTTPS
+# --- Session security hardening ---
+# I'm setting cookies to be secure and reducing session lifetime for safety.
+app.config["SESSION_COOKIE_SECURE"] = False  # Should be True when using HTTPS.
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.permanent_session_lifetime = timedelta(minutes=30)  # I'm expiring idle sessions sooner
+app.permanent_session_lifetime = timedelta(minutes=30)
 
-# Enable CSRF protection
+# I'm enabling CSRF protection globally.
 csrf = CSRFProtect(app)
 
-# --- Fake user store (I'm hashing the password so I never store plain text) ---
+# --- Fake user store (temporary fallback for demo) ---
+# I'm using hashed passwords here (never plain text!).
 USERS = {
-    # username: password_hash for 'password123'
     "student": generate_password_hash("password123")
 }
 
-# I'm connecting both my local SQLite database (for users)
-# and a MongoDB database (for patient stroke records)
-
+# --- Database setup section (SQL for users; Mongo for patients) ---
 from flask_sqlalchemy import SQLAlchemy
 from pymongo import MongoClient
 
-# I'm setting up SQLite for user authentication
+# I'm setting up SQLite for user authentication.
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-# I'm initialising SQLAlchemy
 db = SQLAlchemy(app)
 
-# I'm defining a simple User model for authentication data
+# I'm creating a simple SQLAlchemy model to store login users securely.
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
-# I'm connecting to my local MongoDB (patient records)
-# Later, this will hold all stroke dataset records securely
+# I'm connecting to MongoDB for patient stroke records (non-SQL data).
 mongo_client = MongoClient("mongodb://localhost:27017/")
 mongo_db = mongo_client["secure_health_db"]
 patients_collection = mongo_db["patients"]
 
-# --- Tiny in-memory rate-limit for /login (I'm throttling repeated failures) ---
-FAIL_WINDOW = 60          # seconds I'm looking back
-FAIL_LIMIT = 5            # I'm allowing 5 failed attempts per window
-fail_log = defaultdict(lambda: deque())  # ip -> deque[timestamps]
+# --- Tiny login rate limiter to stop brute-force attempts ---
+FAIL_WINDOW = 60  # I'm checking login attempts within this time frame (seconds).
+FAIL_LIMIT = 5    # I'm allowing up to 5 failed attempts before blocking temporarily.
+fail_log = defaultdict(lambda: deque())  # I'm using a deque to track timestamps.
 
 def too_many_failures(ip: str) -> bool:
+    # I'm checking if this IP has made too many failed login attempts recently.
     now = datetime.utcnow().timestamp()
     dq = fail_log[ip]
-    # I'm dropping old entries outside my window
     while dq and now - dq[0] > FAIL_WINDOW:
         dq.popleft()
     return len(dq) >= FAIL_LIMIT
 
 def note_failure(ip: str):
+    # I'm logging a failed login attempt.
     now = datetime.utcnow().timestamp()
     dq = fail_log[ip]
     dq.append(now)
 
-# --- Security headers (I'm adding a few safe-by-default headers) ---
+# --- Security headers for every response ---
 @app.after_request
 def add_security_headers(resp):
+    # I'm adding HTTP headers to improve browser security.
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # I'm allowing only same-origin resources + my own inline styles (kept minimal).
+    # I'm allowing the Chart.js CDN + safe defaults (matches what your charts need).
     resp.headers["Content-Security-Policy"] = (
-    "default-src 'self'; "
-    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
-    "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; "
-    "connect-src 'self'"
-)
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'"
+    )
     return resp
 
-# --- Helpers ---
+# --- Helper function to enforce login ---
 def require_login():
     if not session.get("user"):
         abort(401)
 
-# --- Routes ---
+# --- Tiny role helpers (I'm not changing your DB schema; just inferring by name) ---
+def is_admin():
+    # I'm treating the username 'admin' as the admin account
+    return session.get("user") == "admin"
+
+def is_patient():
+    # I'm treating usernames like 'patient-1234' as patient accounts
+    u = session.get("user") or ""
+    return u.startswith("patient-")
+
+def patient_id_from_username():
+    # I'm pulling the numeric id out of 'patient-<id>'
+    try:
+        return int((session.get("user") or "").split("-", 1)[1])
+    except Exception:
+        return None
+
+# --- Routes start here ---
 @app.route("/")
 def home():
-    # I'm showing the friendly home page (extends base.html).
+    # I'm showing the home page (index.html template).
     return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # I'm using my WTForms login form for validation.
     form = LoginForm()
     client_ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
 
-    # I'm blocking if this IP has too many recent failures
+    # I'm blocking login if this IP has too many recent failures.
     if request.method == "POST" and too_many_failures(client_ip):
         flash("Too many failed attempts. Please wait a minute and try again.", "error")
         return render_template("login.html", form=form), 429
 
+    # If form is valid, I'm checking credentials.
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
 
-        # I'm checking first in the SQLite database
+        # I'm checking credentials from the SQLite database first.
         u = User.query.filter_by(username=username).first()
         if u and check_password_hash(u.password_hash, password):
             session.clear()
@@ -218,7 +245,7 @@ def login():
             flash("You are now signed in.", "success")
             return redirect(url_for("dashboard"))
 
-        # If not found in DB, fall back to fake USERS dictionary
+        # If not in SQLite, I’m checking the fallback USERS dict.
         stored_hash = USERS.get(username)
         if stored_hash and check_password_hash(stored_hash, password):
             session.clear()
@@ -227,21 +254,17 @@ def login():
             flash("You are now signed in.", "success")
             return redirect(url_for("dashboard"))
 
-        # If both fail, log and show error
+        # If both fail, I log and show an error.
         note_failure(client_ip)
         flash("Invalid username or password.", "error")
         return render_template("login.html", form=form), 401
 
-    # Default case for GET or invalid POST
+    # If GET request or invalid POST, I show the login form again.
     return render_template("login.html", form=form)
 
-# --- Analytics helpers & dashboard route ------------------------------------
-# I'm importing tools to count and summarise neatly
-from collections import Counter
-from statistics import mean
-
+# --- Dashboard + analytics + patient-only branch ---
 def _age_band(a):
-    """I'm bucketing ages so I can chart them cleanly."""
+    # I'm grouping ages into simple buckets for the chart.
     try:
         a = float(a)
     except (TypeError, ValueError):
@@ -254,41 +277,66 @@ def _age_band(a):
 
 @app.route("/dashboard")
 def dashboard():
-    # I'm protecting this page so only logged-in users can view analytics
+    # I'm making sure only logged-in users can access this page.
     if not session.get("user"):
         flash("Please log in to see the dashboard.", "warning")
         return redirect(url_for("login"))
 
-    # I'm pulling just the fields I need to keep this light and fast
+    # --- Patient-only branch (I'm showing ONLY their own row; no charts/tables) ---
+    if is_patient():
+        pid = patient_id_from_username()
+        if pid is None:
+            flash("Your account is misconfigured. Please contact support.", "error")
+            return redirect(url_for("logout"))
+
+        # I'm fetching exactly one record for this patient id
+        doc = patients_collection.find_one({"id": pid}, {"_id": 0})
+        if not doc:
+            flash("No record found for your account. Please contact support.", "error")
+            return redirect(url_for("logout"))
+
+        # I'm cleaning age if it's a whole number (e.g., 80.0 → 80)
+        if "age" in doc and isinstance(doc["age"], (float, int)) and float(doc["age"]).is_integer():
+            doc["age"] = int(doc["age"])
+
+        # I'm handing off to a simple patient view (no charts)
+        return render_template(
+            "patient_dashboard.html",
+            user=session.get("user"),
+            patient=doc,
+            support_number="+44 7700 900123"  # forged UK number as requested
+        )
+
+    # --- Admin/Student branch (your existing analytics + table + search) ---
+    # I'm fetching selected patient fields from MongoDB for display.
     cursor = patients_collection.find({}, {
-        "_id": 0,
-        "age": 1,
-        "gender": 1,
-        "stroke": 1,
-        "avg_glucose_level": 1,
-        "bmi": 1,
-        "hypertension": 1,
-        "heart_disease": 1,
-        "smoking_status": 1
+        "_id": 0, "id": 1, "age": 1, "gender": 1, "stroke": 1,
+        "avg_glucose_level": 1, "bmi": 1, "hypertension": 1,
+        "heart_disease": 1, "smoking_status": 1, "ever_married": 1,
+        "work_type": 1, "residence_type": 1
     })
     docs = list(cursor)
 
+    # I'm computing some basic statistics.
     total = len(docs)
     stroke_yes = sum(1 for d in docs if int(d.get("stroke", 0)) == 1)
-    stroke_no  = total - stroke_yes
+    stroke_no = total - stroke_yes
     stroke_rate = round((stroke_yes / total) * 100, 2) if total else 0.0
 
-    # I'm counting simple distributions for quick charts
-    by_gender = Counter((d.get("gender") or "Unknown") for d in docs)
+    by_gender = Counter(d.get("gender") or "Unknown" for d in docs)
     by_age_band = Counter(_age_band(d.get("age")) for d in docs)
 
-    # I'm showing a couple of simple risk-factor signals (means)
-    # – keeping it clearly labelled as descriptive, not clinical advice.
-    glucose_stroke = [float(d.get("avg_glucose_level")) for d in docs if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke",0))==1]
-    glucose_no     = [float(d.get("avg_glucose_level")) for d in docs if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke",0))==0]
-    bmi_stroke     = [float(d.get("bmi")) for d in docs if d.get("bmi") not in (None, "") and int(d.get("stroke",0))==1]
-    bmi_no         = [float(d.get("bmi")) for d in docs if d.get("bmi") not in (None, "") and int(d.get("stroke",0))==0]
+    # I'm preparing lists for calculating mean values.
+    glucose_stroke = [float(d.get("avg_glucose_level")) for d in docs
+                      if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke", 0)) == 1]
+    glucose_no = [float(d.get("avg_glucose_level")) for d in docs
+                  if d.get("avg_glucose_level") not in (None, "") and int(d.get("stroke", 0)) == 0]
+    bmi_stroke = [float(d.get("bmi")) for d in docs
+                  if d.get("bmi") not in (None, "") and int(d.get("stroke", 0)) == 1]
+    bmi_no = [float(d.get("bmi")) for d in docs
+              if d.get("bmi") not in (None, "") and int(d.get("stroke", 0)) == 0]
 
+    # I'm structuring my summary stats neatly for the dashboard.
     stats = {
         "total": total,
         "stroke_yes": stroke_yes,
@@ -302,52 +350,218 @@ def dashboard():
         "bmi_mean_no": round(mean(bmi_no), 1) if bmi_no else None,
     }
 
-    # I'm passing lists to the template so Chart.js can plot them
+    # I'm preparing chart labels and values for Chart.js graphs.
     gender_labels = list(stats["by_gender"].keys())
     gender_values = [stats["by_gender"][g] for g in gender_labels]
-
     age_labels = ["0–17", "18–35", "36–50", "51–65", "66+"]
     age_values = [stats["by_age_band"].get(lbl, 0) for lbl in age_labels]
 
-    # I'm fetching all patients from MongoDB for admin/student users
-    page = int(request.args.get("page", 1))  # I'm getting current page number
-    per_page = 50  # I'm showing 50 records per page
+    # --- SEARCH + PAGINATION (your working block, unchanged except exact matches for gender/smoking) ---
+    q = (request.args.get("q") or "").strip()
+    page = max(int(request.args.get("page", 1) or 1), 1)
+    per_page = 50
+    query = {}
 
-    # I'm sorting for consistency and skipping based on pagination
-    patients_cursor = patients_collection.find({}, {"_id": 0}).skip((page - 1) * per_page).limit(per_page)
+    # I'm allowing search on gender, smoking status, text and numbers(this part is an ai assisted code).
+    if q:
+        or_blocks = []
+        for fld in ["gender", "smoking_status", "work_type", "residence_type", "ever_married"]:
+            if fld in ["gender", "smoking_status"]:
+                or_blocks.append({fld: {"$regex": f"^{q}$", "$options": "i"}})  # whole word match
+            else:
+                or_blocks.append({fld: {"$regex": q, "$options": "i"}})        # partial ok
+        if q.isdigit():
+            or_blocks.append({"id": int(q)})
+        try:
+            num = float(q)
+            or_blocks += [
+                {"age": num}, {"avg_glucose_level": num}, {"bmi": num},
+                {"stroke": int(num)}, {"hypertension": int(num)}, {"heart_disease": int(num)},
+            ]
+        except ValueError:
+            pass
+        if or_blocks:
+            query = {"$or": or_blocks}
+
+    # I'm applying pagination to MongoDB query.
+    patients_cursor = (
+        patients_collection.find(query, {"_id": 0})
+        .skip((page - 1) * per_page)
+        .limit(per_page)
+    )
     patients = list(patients_cursor)
-    total_patients = patients_collection.count_documents({})
 
-    # I'm calculating total pages
-    total_pages = (total_patients + per_page - 1) // per_page
+    # I'm cleaning float ages like 80.0 → 80 for neat display.
+    for p in patients:
+        if "age" in p and isinstance(p["age"], (float, int)) and float(p["age"]).is_integer():
+            p["age"] = int(p["age"])
 
-    # I'm sending all data to dashboard.html
+    total_patients = patients_collection.count_documents(query)
+    total_pages = max((total_patients + per_page - 1) // per_page, 1)
+
+    # I'm rendering the dashboard template with all prepared data.
     return render_template(
         "dashboard.html",
         user=session.get("user"),
         stats=stats,
         gender_labels=gender_labels, gender_values=gender_values,
         age_labels=age_labels, age_values=age_values,
-        patients=patients, page=page, total_pages=total_pages
+        patients=patients, page=page, total_pages=total_pages, q=q
     )
 
-# I'm exposing a tiny JSON API so the dashboard (or markers) can fetch stats if needed
 @app.route("/api/stats")
 def api_stats():
+    # I'm returning a small JSON version of basic stats (for potential API use).
     if not session.get("user"):
         return {"error": "unauthorised"}, 401
-    # I’m returning just the high-level numbers for now
-    cursor = patients_collection.find({}, {"_id":0, "stroke":1})
+    cursor = patients_collection.find({}, {"_id": 0, "stroke": 1})
     docs = list(cursor)
     total = len(docs)
-    stroke_yes = sum(1 for d in docs if int(d.get("stroke",0))==1)
-    return {"total": total, "stroke_yes": stroke_yes, "stroke_no": total-stroke_yes}
-# I'm providing a proper /logout route so the nav link works
+    stroke_yes = sum(1 for d in docs if int(d.get("stroke", 0)) == 1)
+    return {"total": total, "stroke_yes": stroke_yes, "stroke_no": total - stroke_yes}
+
 @app.route("/logout")
 def logout():
-    session.clear()                         # I'm clearing the session safely
+    # I'm clearing the user session and flashing a friendly sign-out message.
+    session.clear()
     flash("You have been signed out.", "success")
-    return redirect(url_for("home"))        # I'm sending the user back to home
+    return redirect(url_for("home"))
+
+# --- ADMIN ROUTES SECTION (AI-assisted code) ---
+# I'm adding admin-only routes to insert, edit, delete patient data, and change passwords.
+
+def admin_required(f):
+    # I'm restricting access to these routes to admin users only(this part is an ai assisted code).
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if session.get("user") != "admin":
+            flash("Admins only.", "danger")
+            return redirect(url_for("dashboard"))
+        return f(*args, **kwargs)
+    return wrapper
+
+@app.route("/settings")
+@admin_required
+def admin_settings():
+    # I'm showing a small admin control panel.
+    return render_template("admin_settings.html")
+
+@app.route("/patients/insert", methods=["GET", "POST"])
+@admin_required
+def insert_record():
+    # I'm letting the admin insert new patient records into MongoDB.
+    from forms import PatientForm
+    form = PatientForm()
+    if form.validate_on_submit():
+        if patients_collection.count_documents({"id": form.id.data}) > 0:
+            flash("A patient with that ID already exists.", "warning")
+            return redirect(url_for("insert_record"))
+        doc = {
+            "id": form.id.data,
+            "gender": form.gender.data.strip().title(),
+            "age": float(form.age.data),
+            "hypertension": int(form.hypertension.data),
+            "heart_disease": int(form.heart_disease.data),
+            "ever_married": form.ever_married.data.strip().title(),
+            "work_type": form.work_type.data.strip(),
+            "residence_type": form.residence_type.data.strip().title(),
+            "avg_glucose_level": float(form.avg_glucose_level.data),
+            "bmi": float(form.bmi.data) if form.bmi.data is not None else None,
+            "smoking_status": form.smoking_status.data.strip(),
+            "stroke": int(form.stroke.data),
+        }
+        patients_collection.insert_one(doc)
+        flash("Patient inserted.", "success")
+        return redirect(url_for("dashboard"))
+    return render_template("insert_record.html", form=form)
+
+@app.route("/patients/delete", methods=["GET", "POST"])
+@admin_required
+def delete_record():
+    # I'm letting the admin delete a patient by their ID.
+    from forms import DeleteForm
+    form = DeleteForm()
+    if form.validate_on_submit():
+        result = patients_collection.delete_one({"id": form.id.data})
+        if result.deleted_count:
+            flash("Patient deleted.", "success")
+        else:
+            flash("No patient with that ID.", "warning")
+        return redirect(url_for("dashboard"))
+    return render_template("delete_record.html", form=form)
+
+@app.route("/patients/edit", methods=["GET", "POST"])
+@admin_required
+def edit_record():
+    # I'm creating a two-step edit process: Find patient → Edit → Save changes.
+    from forms import EditLookupForm, PatientForm
+    lookup = EditLookupForm()
+    form = PatientForm()
+
+    if lookup.validate_on_submit() and "Find" in request.form.values():
+        doc = patients_collection.find_one({"id": lookup.id.data}, {"_id": 0})
+        if not doc:
+            flash("No patient with that ID.", "warning")
+            return redirect(url_for("edit_record"))
+        # I'm pre-filling the edit form with the current patient details.
+        form.id.data = doc.get("id")
+        form.gender.data = doc.get("gender", "")
+        form.age.data = doc.get("age", 0)
+        form.hypertension.data = int(doc.get("hypertension", 0))
+        form.heart_disease.data = int(doc.get("heart_disease", 0))
+        form.ever_married.data = doc.get("ever_married", "")
+        form.work_type.data = doc.get("work_type", "")
+        form.residence_type.data = doc.get("residence_type", "")
+        form.avg_glucose_level.data = float(doc.get("avg_glucose_level", 0))
+        form.bmi.data = float(doc["bmi"]) if doc.get("bmi") not in (None, "") else None
+        form.smoking_status.data = doc.get("smoking_status", "")
+        form.stroke.data = int(doc.get("stroke", 0))
+        return render_template("edit_record.html", lookup=lookup, form=form, found=True)
+
+    if form.validate_on_submit() and "Save" in request.form.values():
+        # I'm saving updated details back to MongoDB.
+        updated = {
+            "gender": form.gender.data.strip().title(),
+            "age": float(form.age.data),
+            "hypertension": int(form.hypertension.data),
+            "heart_disease": int(form.heart_disease.data),
+            "ever_married": form.ever_married.data.strip().title(),
+            "work_type": form.work_type.data.strip(),
+            "residence_type": form.residence_type.data.strip().title(),
+            "avg_glucose_level": float(form.avg_glucose_level.data),
+            "bmi": float(form.bmi.data) if form.bmi.data is not None else None,
+            "smoking_status": form.smoking_status.data.strip(),
+            "stroke": int(form.stroke.data),
+        }
+        patients_collection.update_one({"id": form.id.data}, {"$set": updated})
+        flash("Patient updated.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("edit_record.html", lookup=lookup, form=form, found=False)
+
+@app.route("/password", methods=["GET", "POST"])
+def change_password():
+    # I'm allowing logged-in users (admin, student, or patient-<id>) to change their password securely.
+    if not session.get("user"):
+        flash("Please log in first.", "warning")
+        return redirect(url_for("login"))
+
+    from forms import ChangePasswordForm
+    form = ChangePasswordForm()
+
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=session["user"]).first()
+        if not user or not check_password_hash(user.password_hash, form.current_password.data):
+            flash("Current password is incorrect.", "danger")
+            return redirect(url_for("change_password"))
+        user.password_hash = generate_password_hash(form.new_password.data)
+        db.session.commit()
+        flash("Password changed.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("change_password.html", form=form)
+
 # --- Dev runner ---
 if __name__ == "__main__":
+    # I'm running in debug mode during development (never in production).
     app.run(debug=True)
