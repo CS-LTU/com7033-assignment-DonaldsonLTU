@@ -8,7 +8,10 @@
   <!-- I'm linking my global stylesheet so every page gets the same look -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+
+<!-- I'm adding this block so each page can define its own background or theme -->
+<body class="{% block body_class %}{% endblock %}">
+
   <!-- I'm showing one-time feedback messages (success/error) to the user -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

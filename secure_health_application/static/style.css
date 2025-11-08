@@ -20,6 +20,7 @@ body {
 h1 {
     color: #009879;
 }
+
 /* I'm styling one-time feedback messages for clarity */
 .flashes { list-style: none; padding: 0; margin: 1rem auto; max-width: 640px; }
 .flashes li { padding: .75rem 1rem; border-radius: 6px; margin-bottom: .5rem; }
@@ -29,7 +30,28 @@ h1 {
 
 /* I'm making WTForms error messages noticeable but unobtrusive (an ai assisted code) */
 .error { color: #b00020; margin-top: 4px; font-size: 0.9rem; }
+
 /* I'm giving my chart canvases a height so they display */
 .container canvas {
     height: 260px;
+}
+
+/* --- Dashboard background (health image) (an ai assisted code) --- */
+.dash-bg {
+  background-image: url("/static/img/health img.png"); /* use your file name here */
+  background-size: cover;        /* make it fill nicely */
+  background-position: center;   /* focus on the middle */
+  background-attachment: fixed;  /* subtle parallax effect */
+  background-repeat: no-repeat;
+  min-height: 100vh;
+}
+
+/* I'm making text and content easy to read on top of the image */
+.dash-bg .container {
+  background: rgba(255, 255, 255, 0.92); /* soft white overlay */
+  backdrop-filter: blur(2px);            /* glassy effect */
+  border-radius: 10px;
+  padding: 18px 22px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  margin-top: 20px;
 }

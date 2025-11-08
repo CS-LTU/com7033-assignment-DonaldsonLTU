@@ -1,9 +1,17 @@
 {% extends "base.html" %}
+{% block body_class %}dash-bg{% endblock %}
 
 {% block title %}Home · Secure Health Application{% endblock %}
 
 {% block content %}
-  <!-- I'm showing a friendly message to confirm that my base layout works correctly -->
-  <h1>✅ Flask is working perfectly!</h1>
-  <p>Welcome to the Secure Health Application homepage.</p>
+  <!-- I'm showing a warm, professional welcome message for the Secure Health Application -->
+  <div style="text-align:center; margin-top:40px;">
+    <h1 style="color:#2e8b57;">✅ Welcome to the Secure Health Application</h1>
+    <p style="font-size:1.1em; color:#444; max-width:600px; margin:10px auto;">
+      Your personal health records are protected and accessible at any time, keeping you informed at all times.
+    </p>
+    <p style="font-size:1.1em; color:#444; max-width:600px; margin:10px auto;">
+      Log in to access your personal record and stay in control of your wellbeing.
+    </p>
+  </div>
 {% endblock %}

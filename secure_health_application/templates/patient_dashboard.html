@@ -1,9 +1,15 @@
 {% extends "base.html" %}
+{% block body_class %}dash-bg{% endblock %}
 {% block title %}My Health Record · Secure Health{% endblock %}
 
 {% block content %}
+  <!-- I'm showing a short, friendly welcome message with the patient’s ID -->
+  <h1>Welcome, patient-{{ patient.id }} 👋</h1>
+  <p style="color:#666;">This page shows your health record summary only.</p>
+  <hr>
+
   <!-- I'm showing only THIS patient's record; no charts/tables -->
-  <h1>Your Record</h1>
+  <h2>Your Record</h2>
   <p style="color:#666">This page shows just your own details.</p>
 
   <table border="1" cellspacing="0" cellpadding="6" style="max-width:900px;">
