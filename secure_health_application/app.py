@@ -236,7 +236,7 @@ def login():
         username = form.username.data
         password = form.password.data
 
-        # I'm checking credentials from the SQLite database first.
+        # secure session handling, I'm checking credentials from the SQLite database first.
         u = User.query.filter_by(username=username).first()
         if u and check_password_hash(u.password_hash, password):
             session.clear()

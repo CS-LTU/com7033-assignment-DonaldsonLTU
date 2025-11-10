@@ -7,7 +7,7 @@ from wtforms.validators import DataRequired, Length, Regexp, Optional, NumberRan
 
 # --- LOGIN FORM (already existing) ---
 class LoginForm(FlaskForm):
-    # I'm validating username: required, 3–30 chars, letters/numbers/underscore/hyphen.
+    # my input sanitisation, I'm validating username: required, 3–30 characters, letters/numbers/underscore/hyphen.
     username = StringField(
         "Username",
         validators=[
