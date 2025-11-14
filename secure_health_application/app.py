@@ -307,7 +307,7 @@ def dashboard():
             support_number="+44 7700 900123"  # forged UK number as requested
         )
 
-    # --- Admin/Student branch (your existing analytics + table + search) ---
+    # --- Admin branch (my existing analytics + table + search) ---
     # I'm fetching selected patient fields from MongoDB for display.
     cursor = patients_collection.find({}, {
         "_id": 0, "id": 1, "age": 1, "gender": 1, "stroke": 1,
@@ -538,6 +538,33 @@ def edit_record():
         return redirect(url_for("dashboard"))
 
     return render_template("edit_record.html", lookup=lookup, form=form, found=False)
+
+# i am adding new delete user route
+@app.route("/users/delete", methods=["GET", "POST"])
+@admin_required
+def delete_user():
+    from forms import DeleteUserForm
+    form = DeleteUserForm()
+
+    if form.validate_on_submit():
+        # I'm looking up this user in the SQLite users table.
+        u = User.query.filter_by(username=form.username.data).first()
+
+        if not u:
+            flash("No user found with that username.", "warning")
+            return redirect(url_for("delete_user"))
+
+        # I'm preventing the admin from deleting their own account by mistake.
+        if u.username == "admin":
+            flash("You can't delete the main admin account.", "danger")
+            return redirect(url_for("delete_user"))
+
+        db.session.delete(u)
+        db.session.commit()
+        flash("User deleted from SQLite users database.", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("delete_user.html", form=form)
 
 @app.route("/password", methods=["GET", "POST"])
 def change_password():

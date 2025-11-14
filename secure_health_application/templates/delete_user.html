@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Delete User Account{% endblock %}
+
+{% block content %}
+<h1>Delete User Account</h1>
+
+<p>
+    <!-- I'm explaining clearly what this page does -->
+    This is a secure place for Admin to remove a user account from the system.
+    This deletes the account from the SQLite users table only — the patient MongoDB records stays the same.
+    Please double-check the username before you press delete because this action cannot be undone.
+</p>
+
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <div>
+        <!-- I'm showing the field where the admin types the username to delete -->
+        {{ form.username.label }}<br>
+        {{ form.username(size=40) }}
+    </div>
+
+    <br>
+
+    <div>
+        <!-- I'm rendering the delete button -->
+        {{ form.submit() }}
+    </div>
+</form>
+
+{% endblock %}

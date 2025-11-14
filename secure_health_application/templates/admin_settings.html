@@ -1,12 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Admin Settings{% endblock %}
+
 {% block content %}
 <h1>Admin Settings</h1>
-<p>Use the options below to manage patient records or change your password.</p>
+
+<!-- I'm giving the admin a simple list of actions they can take. -->
+<p>Use the options below to manage patient records, user accounts, or change your password.</p>
+
 <ul>
+  <!-- I'm linking to the insert page so the admin can add new patient records. -->
   <li><a href="{{ url_for('insert_record') }}">Insert new record</a></li>
+
+  <!-- I'm linking to the edit page so the admin can update existing patient information. -->
   <li><a href="{{ url_for('edit_record') }}">Edit a record</a></li>
+
+  <!-- I'm linking to the delete page so the admin can remove a patient record safely. -->
   <li><a href="{{ url_for('delete_record') }}">Delete a record</a></li>
+
+  <!-- I'm linking to the password change page so the admin can update their password securely. -->
   <li><a href="{{ url_for('change_password') }}">Change password</a></li>
+
+  <!-- NEW OPTION: I'm adding this link so the admin can delete user accounts from the SQLite users database. -->
+  <li><a href="{{ url_for('delete_user') }}">Delete user account</a></li>
 </ul>
+
 {% endblock %}

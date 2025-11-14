@@ -45,16 +45,33 @@ class PatientForm(FlaskForm):
     submit = SubmitField("Save")
 
 class DeleteForm(FlaskForm):
+    # I'm letting the admin delete a patient record by ID.
     id = IntegerField("ID", validators=[DataRequired()])
     submit = SubmitField("Delete")
 
 class EditLookupForm(FlaskForm):
+    # I'm letting the admin search for a patient ID before editing.
     id = IntegerField("ID", validators=[DataRequired()])
     submit = SubmitField("Find")
 
 class ChangePasswordForm(FlaskForm):
+    # I'm validating current password + enforcing new strong password rules.
     current_password = PasswordField("Current password", validators=[DataRequired()])
     new_password = PasswordField("New password", validators=[DataRequired(), Length(min=8)])
-    confirm_password = PasswordField("Confirm new password",
-                                     validators=[DataRequired(), EqualTo('new_password', message="Passwords must match.")])
+    confirm_password = PasswordField(
+        "Confirm new password",
+        validators=[DataRequired(), EqualTo('new_password', message="Passwords must match.")]
+    )
     submit = SubmitField("Change password")
+
+# --- NEW: ADMIN USER DELETION FORM (for deleting accounts from SQLite users.db) ---
+class DeleteUserForm(FlaskForm):
+    # I'm letting the admin type the username they want to remove from the users database.
+    username = StringField(
+        "Username",
+        validators=[
+            DataRequired(),
+            Length(min=3, max=50)
+        ]
+    )
+    submit = SubmitField("Delete user")
